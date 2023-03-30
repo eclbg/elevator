@@ -78,6 +78,12 @@ class MOVING:
 
     @staticmethod
     def handle_floor_sensor_input(elev, floor: int):
+        if elev.direction == "DOWN":
+            if not floor == elev.current_floor - 1:
+                raise RuntimeError("Received floor sensor from an unexpected floor")
+        elif elev.direction == "UP":
+            if not floor == elev.current_floor + 1:
+                raise RuntimeError("Received floor sensor from an unexpected floor")
         elev.current_floor = floor
         if floor in elev.stops:
             elev.load()

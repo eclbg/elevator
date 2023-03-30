@@ -1,10 +1,11 @@
 class IDLE:
     @staticmethod
     def handle_onboard_button_press(elev, dest_floor: int):
-        # If the current floor button is pressed the elevator doesn't moved
+        # If the current floor button is pressed the elevator doesn't move
         # and opens the doors
         if elev.current_floor == dest_floor:
             elev.load()
+            return
         elev.stops.add(dest_floor)
         # in which direction should the elevator move?
         direction = "UP" if dest_floor > elev.current_floor else "DOWN"

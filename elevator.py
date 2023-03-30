@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from copy import copy
-from typing import Literal, Optional
+from typing import Literal
 
 from modes import MOVING, IDLE, LOADING
 
@@ -13,7 +13,7 @@ class ElevatorEvent:
         "HALLWAY_BUTTON_PRESS",
         "LOADING_COMPLETE",
     ]
-    payload: Optional[dict] = None
+    payload: dict | None = None
 
 
 # Super dumb class representing the motor control
@@ -31,7 +31,8 @@ class MotorController:
 @dataclass
 class ElevatorState:
     mode: Literal["IDLE", "MOVING", "LOADING"]
-    direction: Optional[Literal["UP", "DOWN"]]
+    direction: Literal["UP", "DOWN"] | None
+    current_floor: int
 
 
 class Elevator:
@@ -56,6 +57,13 @@ class Elevator:
             f"Elevator(mode={self.mode.__name__}, {self.current_floor=}, "
             f"{self.direction=}, {self.stops=}, {self.stops_for_later=})"
         )
+
+    def copy(self) -> "Elevator":
+        new_elevator = Elevator(mode=self.mode, current_floor=self.current_floor, direction=self.direction)
+        new_elevator.stops = copy(self.stops)
+        new_elevator.stops_for_later = copy(self.stops_for_later)
+        new_elevator.stops_for_after_later = copy(self.stops_for_after_later)
+        return new_elevator
 
     @property
     def state(self) -> ElevatorState:
@@ -94,6 +102,16 @@ class Elevator:
             and self.direction == "DOWN"
             and min(self.stops) >= self.current_floor
         ), "Moving down and stops for now are above"
+        assert not (
+            self.mode == MOVING
+            and self.direction == "DOWN"
+            and self.current_floor == Elevator.BOTTOM_FLOOR
+        ), "Moving down from the bottom floor"
+        assert not (
+            self.mode == MOVING
+            and self.direction == "UP"
+            and self.current_floor == Elevator.TOP_FLOOR
+        ), "Moving up from the top floor"
         assert not (
             self.stops.intersection(self.stops_for_later).intersection(
                 self.stops_for_after_later
