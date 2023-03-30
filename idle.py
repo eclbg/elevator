@@ -1,7 +1,8 @@
 class IDLE:
     @staticmethod
     def handle_onboard_button_press(elev, dest_floor: int):
-        # If the current floor button is pressed the elevator doesn't moved and opens the doors
+        # If the current floor button is pressed the elevator doesn't moved
+        # and opens the doors
         if elev.current_floor == dest_floor:
             elev.load()
         elev.stops.add(dest_floor)

@@ -1,18 +1,8 @@
 from dataclasses import dataclass
 from copy import copy
-from typing import Literal, Union, Optional
+from typing import Literal, Optional
 
 from modes import MOVING, IDLE, LOADING
-
-
-# Is it a good idea to have some sort of class structure for the different inputs possible?
-# for ex: ElevatorInput, OnboardButton, HallwayButton
-# Could this also encapsulate the floor sensor messages?
-# Let's try
-@dataclass
-class ElevatorInput:
-    source: Union[Literal["ONBOARD_PANEL", "FLOOR_SENSOR"], int]
-    command: Union[Literal["UP", "DOWN"], int]  # This name is really bad
 
 
 @dataclass
@@ -24,13 +14,6 @@ class ElevatorEvent:
         "LOADING_COMPLETE",
     ]
     payload: Optional[dict] = None
-
-
-# Not sure about this one
-@dataclass
-class ElevatorInstruction:
-    kind: Literal["MOVE"]
-    dest_floor: int  # Should be between 0 and 5. Where do we control this?
 
 
 # Super dumb class representing the motor control
@@ -45,7 +28,16 @@ class MotorController:
         self.motor_state = "OFF"
 
 
+@dataclass
+class ElevatorState:
+    mode: Literal["IDLE", "MOVING", "LOADING"]
+    direction: Optional[Literal["UP", "DOWN"]]
+
+
 class Elevator:
+    TOP_FLOOR = 5
+    BOTTOM_FLOOR = 1
+
     def __init__(self, mode=IDLE, current_floor=1, direction=None):
         self.mode = mode
         self.current_floor = current_floor
@@ -65,18 +57,33 @@ class Elevator:
             f"{self.direction=}, {self.stops=}, {self.stops_for_later=})"
         )
 
+    @property
+    def state(self) -> ElevatorState:
+        """Return the current state of the Elevator
+
+        These are:
+            - mode
+            - direction
+            - current_floor
+        The list of stops will not be part of the state, for now
+        """
+        curr_state = ElevatorState(
+            mode=self.mode.__name__,
+            direction=self.direction,
+            current_floor=self.current_floor,
+        )
+        return curr_state
+
     def invariants(self):
         assert not (
             self.mode == IDLE
-            and any(
-                (self.stops, self.stops_for_later, self.stops_for_after_later)
-            )
+            and any((self.stops, self.stops_for_later, self.stops_for_after_later))
         ), "IDLE and with stops to fulfil"
         assert not (
             self.mode == IDLE and self.direction is not None
         ), "IDLE but with a direction"
-        assert not (self.current_floor > 5), "Went through roof"
-        assert not (self.current_floor < 1), "Went through floor"
+        assert not (self.current_floor > Elevator.TOP_FLOOR), "Went through roof"
+        assert not (self.current_floor < Elevator.BOTTOM_FLOOR), "Went through floor"
         assert not (
             self.mode == MOVING
             and self.direction == "UP"
@@ -100,9 +107,7 @@ class Elevator:
                 self, dest_floor=event.payload["dest"]
             )
         elif event.kind == "FLOOR_SENSOR":
-            self.mode.handle_floor_sensor_input(
-                self, floor=event.payload["floor"]
-            )
+            self.mode.handle_floor_sensor_input(self, floor=event.payload["floor"])
         elif event.kind == "HALLWAY_BUTTON_PRESS":
             self.mode.handle_hallway_button_press(
                 self,
@@ -186,18 +191,10 @@ def test_scenario():
     )
     assert elevator.mode == MOVING
     elevator.invariants()
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2})
-    )
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3})
-    )
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 4})
-    )
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 5})
-    )
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2}))
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3}))
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 4}))
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 5}))
     assert elevator.mode == LOADING
     elevator.invariants()
     elevator.handle_event(ElevatorEvent(kind="LOADING_COMPLETE"))
@@ -214,18 +211,12 @@ def test_scenario():
     assert elevator.mode == MOVING
     elevator.invariants()
     print(repr(elevator))
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 4})
-    )
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3})
-    )
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 4}))
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3}))
     elevator.handle_event(
         ElevatorEvent(kind="ONBOARD_PANEL_BUTTON_PRESS", payload={"dest": 5})
     )
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2})
-    )
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2}))
     assert elevator.mode == LOADING
     elevator.invariants()
     elevator.handle_event(ElevatorEvent(kind="LOADING_COMPLETE"))
@@ -260,14 +251,10 @@ def test_scenario():
         )
     )
     assert elevator.mode == MOVING
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2})
-    )
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 2}))
     assert elevator.stops == {3, 5}
     assert elevator.stops_for_later == {4, 1}
-    elevator.handle_event(
-        ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3})
-    )
+    elevator.handle_event(ElevatorEvent(kind="FLOOR_SENSOR", payload={"floor": 3}))
     assert elevator.mode == LOADING
     assert elevator.stops == {5}
     elevator.handle_event(
