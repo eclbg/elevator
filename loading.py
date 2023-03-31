@@ -32,12 +32,12 @@ class LOADING:
         # unless it can be our lowest or highest stop
         if elev.direction != direction:
             if elev.direction == "UP":
-                if floor >= max(elev.stops):
+                if not elev.stops or floor >= max(elev.stops):
                     elev.stops.add(floor)
                 else:
                     elev.stops_for_later.add(floor)
             if elev.direction == "DOWN":
-                if floor <= max(elev.stops):
+                if not elev.stops or floor <= min(elev.stops):
                     elev.stops.add(floor)
                 else:
                     elev.stops_for_later.add(floor)
@@ -52,15 +52,15 @@ class LOADING:
             # unless it can be our lowest or highest stop for later
             else:
                 if elev.direction == "UP":
-                    if floor >= max(elev.stops):
-                        elev.stops.add(floor)
-                    else:
+                    if not elev.stops_for_later or floor >= max(elev.stops_for_later):
                         elev.stops_for_later.add(floor)
+                    else:
+                        elev.stops_for_after_later.add(floor)
                 if elev.direction == "DOWN":
-                    if floor <= max(elev.stops):
-                        elev.stops.add(floor)
-                    else:
+                    if not elev.stops_for_later or floor <= min(elev.stops_for_later):
                         elev.stops_for_later.add(floor)
+                    else:
+                        elev.stops_for_after_later.add(floor)
 
     @staticmethod
     def handle_floor_sensor_input(elev, floor: int):

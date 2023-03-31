@@ -26,12 +26,12 @@ class MOVING:
             # unless this floor would be our lowest or highest stop immediately later
             if elev.direction == direction:
                 if elev.direction == "UP":
-                    if floor <= min(elev.stops_for_later):
+                    if not elev.stops_for_later or floor <= min(elev.stops_for_later):
                         elev.stops_for_later.add(floor)
                     else:
                         elev.stops_for_after_later.add(floor)
                 if elev.direction == "DOWN":
-                    if floor >= max(elev.stops_for_later):
+                    if not elev.stops_for_later or floor >= max(elev.stops_for_later):
                         elev.stops_for_later.add(floor)
                     else:
                         elev.stops_for_after_later.add(floor)

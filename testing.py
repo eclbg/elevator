@@ -50,28 +50,24 @@ def get_possible_events(state: ElevatorState) -> list[ElevatorEvent]:
     return possible_events
 
 
-def get_new_elevators(elevator, visited_states):
-    new_elevators = []
+def evolve_elevator(elevator: Elevator, visited_states: set):
     for event in get_possible_events(elevator.state):
-        # print(event)
         new_elevator = elevator.copy()
         new_elevator.handle_event(event)
         new_elevator.invariants()
-        # print(new_elevator.state)
-        # print(new_elevator.stops)
-        if new_elevator.state not in visited_states:
-            new_elevators.append(new_elevator)
-    if not new_elevators:
-        return
-    new_states = set(e.state for e in new_elevators)
-    visited_states
-    # TODO: if no extra states then return
-    for elevator in new_elevators:
-        new_elevators = get_new_elevators(elevator, visited_states)
-    # return new_elevators
+        new_state = new_elevator.state
+        if new_state not in visited_states:
+            visited_states.add(new_state)
+            evolve_elevator(new_elevator, visited_states)
+    return visited_states
 
-elevators = [Elevator()]
-visited_states = []
 
-for elevator in elevators:
-    new_elevators = get_new_elevators(elevator, visited_states)
+
+elevator = Elevator()
+elevators = [elevator]
+visited_states = {elevator.state}
+
+visted_states = evolve_elevator(elevator, visited_states)
+
+for s in sorted(visited_states, key=lambda x: (x.mode, x.current_floor)):
+    print(s)

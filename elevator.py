@@ -28,7 +28,7 @@ class MotorController:
         self.motor_state = "OFF"
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ElevatorState:
     mode: Literal["IDLE", "MOVING", "LOADING"]
     direction: Literal["UP", "DOWN"] | None
@@ -50,8 +50,6 @@ class Elevator:
         self.stops_for_later = set()
         self.stops_for_after_later = set()
 
-        self.invariants()
-
     def __repr__(self):
         return (
             f"Elevator(mode={self.mode.__name__}, {self.current_floor=}, "
@@ -59,7 +57,9 @@ class Elevator:
         )
 
     def copy(self) -> "Elevator":
-        new_elevator = Elevator(mode=self.mode, current_floor=self.current_floor, direction=self.direction)
+        new_elevator = Elevator(
+            mode=self.mode, current_floor=self.current_floor, direction=self.direction
+        )
         new_elevator.stops = copy(self.stops)
         new_elevator.stops_for_later = copy(self.stops_for_later)
         new_elevator.stops_for_after_later = copy(self.stops_for_after_later)
@@ -83,6 +83,8 @@ class Elevator:
         return curr_state
 
     def invariants(self):
+        # TODO: we could be ignoring a button press by mistake. 
+        # We should track button presses not just stops
         assert not (
             self.mode == IDLE
             and any((self.stops, self.stops_for_later, self.stops_for_after_later))
@@ -92,6 +94,7 @@ class Elevator:
         ), "IDLE but with a direction"
         assert not (self.current_floor > Elevator.TOP_FLOOR), "Went through roof"
         assert not (self.current_floor < Elevator.BOTTOM_FLOOR), "Went through floor"
+        assert not (self.mode == MOVING and not self.stops), "Moving with no stops"
         assert not (
             self.mode == MOVING
             and self.direction == "UP"
@@ -158,41 +161,6 @@ class Elevator:
     def go_idle(self):
         self.mode = IDLE
         self.direction = None
-
-    # def _open_doors(self):
-    #     ...
-    #
-    # def _finish_loading(self):
-    #     ...
-
-    # def _continue_or_idle(self):
-    #     assert self.mode == "LOADING"
-    #     if not self.stops():
-    #         if
-    #     if not any(self.destinations, self.up_requests, self.down_requests):
-    #         self.mode = "IDLE"
-    #
-    # def _open_doors(self):
-    #     self.doors_open = True
-    #
-    # def _close_doors(self):
-    #     self.doors_open = False
-    #
-    # # Not sure that we need this one
-    # def enqueue_instruction(self, instruction: ElevatorInstruction):
-    #     # Depending on the pending instructions the new one will go to the end of the queue
-    #     # or somewhere else
-    #     ...
-    #
-    # # Dave recommends that the motor is dumb. That meaning we control it more from the
-    # # elevator instead of sending it messages that might have more context such as
-    # # destination floors or the likes
-    # # On a second thought, my approach might not be too bad, but the messages might
-    # # be better if they're simpler than how I initially had conceived them
-    # # example: "up", "down", "stop" might be better messages than "go to floor 3" etc.
-    # def fulfil_instruction(self, instruction: ElevatorInstruction):
-    #     """Send message to the control system so it fulfils an instruction"""
-    #     ...
 
 
 def test_scenario():
@@ -294,8 +262,4 @@ def test_scenario():
     assert elevator.stops_for_after_later == {3}
 
 
-test_scenario()
-
-# Invariants:
-# I'll write the ones that I spot in my current implementation here
-# We can't have empty destinations and mode != "IDLE"
+# test_scenario()
